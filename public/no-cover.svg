@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300" role="img" aria-label="No cover available">
+  <rect width="200" height="300" fill="#ebe4d6"/>
+  <rect x="0" y="0" width="10" height="300" fill="#d8cdb8"/>
+  <rect x="18" y="8" width="174" height="284" rx="2" fill="none" stroke="#d3c7b0" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <g transform="translate(100 120)" fill="none" stroke="#8c8272" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-30 -22c10-4 20-4 30 2c10-6 20-6 30-2v44c-10-4-20-4-30 2c-10-6-20-6-30-2z"/>
+    <path d="M0 -20v44"/>
+  </g>
+  <text x="100" y="186" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#5f584e">No cover</text>
+  <text x="100" y="208" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#5f584e">available</text>
+</svg>
