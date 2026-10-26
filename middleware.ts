@@ -13,6 +13,7 @@ export const config = {
     "/profile/:path*",
     "/account/:path*",
     "/login",
+    "/reset-password",
     {
       source: "/((?!_next/|favicon.ico|.*\\.[a-zA-Z0-9]+$).*)",
       has: [{ type: "host", value: "admin\\..+" }],

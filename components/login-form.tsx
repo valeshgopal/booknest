@@ -1,12 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
+import { PasswordInput } from "@/components/password-input";
+import {
+  MIN_PASSWORD_LENGTH as MIN_PASSWORD,
+  confirmEmailPath,
+  forgotPasswordPath,
+  signupCallbackUrl,
+} from "@/lib/auth-links";
 import { createClient } from "@/lib/supabase/client";
 
-type Mode = "sign-in" | "sign-up";
-
-const MIN_PASSWORD = 6;
+export type Mode = "sign-in" | "sign-up";
 
 export function LoginForm({
   next,
@@ -14,23 +20,35 @@ export function LoginForm({
   allowSignUp = true,
   title = "Sign in",
   intro = "Sign in to see and edit your collections.",
+  initialMode = "sign-in",
 }: {
   next: string;
   linkError: string | null;
   allowSignUp?: boolean;
   title?: string;
   intro?: string;
+  initialMode?: Mode;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("sign-in");
+  const [mode, setMode] = useState<Mode>(allowSignUp ? initialMode : "sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmTouched, setConfirmTouched] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(linkError);
-  const [sentTo, setSentTo] = useState<string | null>(null);
   const emailId = useId();
   const passwordId = useId();
+  const confirmId = useId();
   const signingUp = mode === "sign-up";
+  const mismatch =
+    signingUp && confirmTouched && confirmPassword !== password;
+
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
+    setConfirmPassword("");
+    setConfirmTouched(false);
+  }
 
   function finish() {
     router.replace(next);
@@ -65,6 +83,11 @@ export function LoginForm({
       setError(`Use at least ${MIN_PASSWORD} characters for the password.`);
       return;
     }
+    if (signingUp && confirmPassword !== password) {
+      setConfirmTouched(true);
+      document.getElementById(confirmId)?.focus();
+      return;
+    }
 
     setPending(true);
     const supabase = createClient();
@@ -73,7 +96,9 @@ export function LoginForm({
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: address,
         password,
-        options: { emailRedirectTo: callbackUrl() },
+        options: {
+          emailRedirectTo: signupCallbackUrl(window.location.origin, next),
+        },
       });
       setPending(false);
       if (signUpError) {
@@ -86,10 +111,10 @@ export function LoginForm({
       }
       if (data.user && data.user.identities?.length === 0) {
         setError("An account with this email already exists. Sign in instead.");
-        setMode("sign-in");
+        switchMode("sign-in");
         return;
       }
-      setSentTo(address);
+      router.push(confirmEmailPath(address, next, true));
       return;
     }
 
@@ -97,40 +122,16 @@ export function LoginForm({
       email: address,
       password,
     });
+    if (signInError?.code === "email_not_confirmed") {
+      router.push(confirmEmailPath(address, next, false));
+      return;
+    }
     setPending(false);
     if (signInError) {
-      setError(
-        signInError.code === "email_not_confirmed"
-          ? "Confirm your email first. The link is in your inbox."
-          : signInError.message,
-      );
+      setError(signInError.message);
       return;
     }
     finish();
-  }
-
-  if (sentTo) {
-    return (
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight">Check your email.</h1>
-        <p className="mt-4 leading-relaxed text-muted">
-          We sent a confirmation link to{" "}
-          <span className="font-medium text-ink">{sentTo}</span>. Open it in
-          this browser to finish creating your account.
-        </p>
-        <button
-          type="button"
-          className="press mt-6 text-sm font-medium text-accent"
-          onClick={() => {
-            setSentTo(null);
-            setMode("sign-in");
-            setPassword("");
-          }}
-        >
-          Back to sign in
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -174,17 +175,27 @@ export function LoginForm({
           />
         </div>
         <div>
-          <label htmlFor={passwordId} className="text-sm font-medium">
-            Password
-          </label>
-          <input
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor={passwordId} className="text-sm font-medium">
+              Password
+            </label>
+            {allowSignUp && !signingUp ? (
+              <Link
+                href={forgotPasswordPath(next, email.trim() || undefined)}
+                className="text-sm font-medium text-accent"
+              >
+                Forgot password?
+              </Link>
+            ) : null}
+          </div>
+          <PasswordInput
             id={passwordId}
-            type="password"
+            label="Password"
             required
             autoComplete={signingUp ? "new-password" : "current-password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 w-full rounded-md border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none"
+            className="rounded-md border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none"
           />
           {signingUp ? (
             <p className="mt-1.5 text-xs text-muted">
@@ -192,6 +203,32 @@ export function LoginForm({
             </p>
           ) : null}
         </div>
+        {signingUp ? (
+          <div>
+            <label htmlFor={confirmId} className="text-sm font-medium">
+              Confirm password
+            </label>
+            <PasswordInput
+              id={confirmId}
+              label="Confirm password"
+              required
+              autoComplete="new-password"
+              value={confirmPassword}
+              aria-invalid={mismatch}
+              aria-describedby={mismatch ? `${confirmId}-error` : undefined}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              onBlur={() => {
+                if (confirmPassword) setConfirmTouched(true);
+              }}
+              className="rounded-md border border-line bg-paper-raised px-3 py-2.5 text-sm outline-none aria-[invalid=true]:border-accent"
+            />
+            {mismatch ? (
+              <p id={`${confirmId}-error`} className="mt-1.5 text-xs text-accent">
+                Passwords don’t match.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {error ? (
           <p role="alert" className="text-sm text-accent">
             {error}
@@ -219,7 +256,7 @@ export function LoginForm({
           type="button"
           className="press font-medium text-accent"
           onClick={() => {
-            setMode(signingUp ? "sign-in" : "sign-up");
+            switchMode(signingUp ? "sign-in" : "sign-up");
             setError(null);
           }}
         >

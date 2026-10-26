@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/components/auth-provider";
 import { BooksCatalogProvider } from "@/components/books-catalog";
 import { CollectionProvider } from "@/components/collection-provider";
+import { ConfirmedNotice } from "@/components/confirmed-notice";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getBooks } from "@/lib/catalog";
@@ -17,6 +18,7 @@ export default async function SiteLayout({
       <AuthProvider>
         <CollectionProvider>
           <SiteHeader />
+          <ConfirmedNotice />
           <main id="main" className="flex-1">
             {children}
           </main>
